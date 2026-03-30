@@ -126,7 +126,9 @@ export const login = async (req, res) => {
         _id: user._id,
         email: user.email,
         username: user.username,         // fullname removed
+        publicKey: user.publicKey,
         avatar: user.avatar,
+        credits: user.credits,
         totalProjects: user.totalProjects
       }
     });
@@ -216,5 +218,156 @@ export const verifyEmail = async (req, res) => {
       success: false,
       message: "Internal server error"
     });
+  }
+};
+
+/* =================================
+   FREIGHTER LOGIN
+================================= */
+export const freighterLogin = async (req, res) => {
+  try {
+    const { publicKey } = req.body;
+    if (!publicKey) return res.status(400).json({ success: false, message: "Public key required" });
+
+    const user = await User.findOne({ publicKey });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found, please sign up" });
+    }
+
+    user.lastActive = new Date();
+    await user.save();
+
+    generateTokenAndSetCookie(res, user._id);
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      user: {
+        _id: user._id,
+        email: user.email,
+        username: user.username,
+        publicKey: user.publicKey,
+        avatar: user.avatar,
+        credits: user.credits
+      }
+    });
+  } catch (error) {
+    console.error("Freighter Login Error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/* =================================
+   FREIGHTER SIGNUP
+================================= */
+export const freighterSignup = async (req, res) => {
+  try {
+    const { publicKey, username } = req.body;
+    if (!publicKey || !username) {
+      return res.status(400).json({ success: false, message: "PublicKey and Username required" });
+    }
+
+    const existingUser = await User.findOne({ $or: [{ publicKey }, { username }] });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: "Username or PublicKey already exists" });
+    }
+
+    const user = await User.create({
+      username,
+      publicKey,
+      isVerified: true // Web3 wallets are inherently verified
+    });
+
+    generateTokenAndSetCookie(res, user._id);
+
+    res.status(201).json({
+      success: true,
+      message: "Signup successful",
+      user: {
+        _id: user._id,
+        email: user.email,
+        username: user.username,
+        publicKey: user.publicKey,
+        avatar: user.avatar,
+        credits: user.credits
+      }
+    });
+  } catch (error) {
+    console.error("Freighter Signup Error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/* =================================
+   LINK WALLET TO EXISTING ACCOUNT
+================================= */
+export const linkWallet = async (req, res) => {
+  try {
+    const { publicKey } = req.body;
+    if (!publicKey) return res.status(400).json({ success: false, message: "Public key required" });
+
+    const existingWallet = await User.findOne({ publicKey });
+    if (existingWallet) {
+      return res.status(400).json({ success: false, message: "This wallet is already attached to another account" });
+    }
+
+    const user = await User.findById(req.user.id);
+    user.publicKey = publicKey;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Wallet linked successfully",
+      user: {
+        _id: user._id,
+        email: user.email,
+        username: user.username,
+        publicKey: user.publicKey,
+        avatar: user.avatar,
+        credits: user.credits
+      }
+    });
+
+  } catch (error) {
+    console.error("Link Wallet Error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/* =================================
+   ADD EMAIL TO EXISTING ACCOUNT
+================================= */
+export const addEmail = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ success: false, message: "Email and password required" });
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: "Email is already in use" });
+    }
+
+    const user = await User.findById(req.user.id);
+    user.email = email;
+    user.password = password; // Will be hashed via pre-save hook
+    user.isVerified = true; // Assuming we skip verification for this MVP, or we can use the same reset password flow
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Email added successfully",
+      user: {
+        _id: user._id,
+        email: user.email,
+        username: user.username,
+        publicKey: user.publicKey,
+        avatar: user.avatar,
+        credits: user.credits
+      }
+    });
+
+  } catch (error) {
+    console.error("Add Email Error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

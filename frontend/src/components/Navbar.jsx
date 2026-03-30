@@ -2,6 +2,8 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Compass, LogOut, User, PlusCircle, LayoutDashboard } from 'lucide-react';
+import CreditsManager from './CreditsManager';
+import AccountLinker from './AccountLinker';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -45,21 +47,27 @@ const Navbar = () => {
           {/* Auth Actions */}
           <div className="flex items-center space-x-4">
             {user ? (
-              <div className="flex items-center space-x-4">
-                <div className="hidden sm:flex flex-col items-end mr-2">
-                  <span className="text-sm font-semibold text-gray-900 leading-none">{user.username}</span>
-                  <span className="text-xs text-gray-500 mt-1">{user.email}</span>
+              <div className="flex items-center space-x-6">
+
+                <AccountLinker />
+                <CreditsManager />
+
+                <div className="flex items-center space-x-4 border-l pl-6 border-gray-200">
+                  <div className="hidden sm:flex flex-col items-end mr-2">
+                    <span className="text-sm font-semibold text-gray-900 leading-none">{user.username}</span>
+                    <span className="text-xs text-gray-500 mt-1">{user.email}</span>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md border-2 border-white">
+                    <User className="h-5 w-5" />
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200"
+                    title="Logout"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </button>
                 </div>
-                <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md border-2 border-white">
-                  <User className="h-5 w-5" />
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200"
-                  title="Logout"
-                >
-                  <LogOut className="h-5 w-5" />
-                </button>
               </div>
             ) : (
               <div className="flex items-center space-x-3">

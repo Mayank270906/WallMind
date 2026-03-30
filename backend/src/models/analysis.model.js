@@ -36,6 +36,10 @@ const analysisSchema = new mongoose.Schema(
     structuralFlags: {
       type: Array,
       default: []
+    },
+
+    stellarTxHash: {
+      type: String
     }
 
   },

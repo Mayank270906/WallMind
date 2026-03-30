@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { UploadCloud, FileImage, X, Loader2, AlertCircle } from 'lucide-react';
 import api from '../api/axios';
 
 function Upload() {
+  const { user, login } = useAuth();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -60,36 +62,26 @@ function Upload() {
       // Step 1: Hit the backend API
       setStatusText('Processing with WallMind Engine...');
       let analysisData = null;
-      
+
       try {
         const response = await api.post('/analysis', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        
-        if (response.data.success && response.data.report) {
-          analysisData = response.data.report;
+
+        if (response.data.success) {
+          // Update user's remaining credits immediately in the navbar
+          if (response.data.remainingCredits !== undefined) {
+            login({ ...user, credits: response.data.remainingCredits });
+          }
+
+          // Navigate to the newly generated database record
+          navigate(`/analysis/${response.data.analysisId}`);
+          return;
         }
       } catch (backendError) {
-        console.warn("Backend parser failed or not connected, using fallback data for demonstration.", backendError);
-        console.warn("Backend parser failed or not connected.", backendError);
+        console.warn("Backend parser failed.", backendError);
+        throw new Error(backendError.response?.data?.error || 'Backend parser failed.');
       }
-
-      // Remove mock fallback – if backend does not return a report, show an error instead
-      if (!analysisData) {
-        setError('Failed to obtain analysis data from the server.');
-        setLoading(false);
-        return;
-      }
-
-      // Navigate to the Viewer with the generated/mocked report data
-      // Using navigate state because the endpoint doesn't persist to the DB.
-      navigate('/analysis/viewer', { 
-        state: { 
-          report: analysisData, 
-          image: preview,
-          title: file.name
-        } 
-      });
 
     } catch (err) {
       setError(err.message || 'An unexpected error occurred during analysis.');
@@ -117,7 +109,7 @@ function Upload() {
             )}
 
             {!file ? (
-              <div 
+              <div
                 className="mt-2 flex justify-center rounded-xl border-2 border-dashed border-gray-300 px-6 py-16 hover:bg-gray-50 hover:border-blue-400 transition-colors cursor-pointer"
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
@@ -128,10 +120,10 @@ function Upload() {
                   <div className="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
                     <span className="relative cursor-pointer rounded-md bg-transparent font-semibold text-blue-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 hover:text-blue-500">
                       <span>Upload a file</span>
-                      <input 
-                        name="floor_plan" 
-                        type="file" 
-                        className="sr-only" 
+                      <input
+                        name="floor_plan"
+                        type="file"
+                        className="sr-only"
                         accept="image/png, image/jpeg, image/jpg"
                         ref={fileInputRef}
                         onChange={handleFileChange}
@@ -144,7 +136,7 @@ function Upload() {
               </div>
             ) : (
               <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6 relative">
-                <button 
+                <button
                   onClick={clearFile}
                   disabled={loading}
                   className="absolute top-4 right-4 p-1 bg-white rounded-full text-gray-500 hover:text-gray-700 shadow-sm border border-gray-200 disabled:opacity-50"
